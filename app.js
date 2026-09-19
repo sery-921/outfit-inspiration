@@ -166,11 +166,52 @@ function openModal(html) {
   if (closeBtn) closeBtn.onclick = closeModal;
 }
 function closeModal() {
+  if (window._formDragCleanup) { window._formDragCleanup(); window._formDragCleanup = null; }
   $('#modalMask').hidden = true;
   $('#modalBox').innerHTML = '';
 }
 $('#modalMask')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const lb = document.querySelector('.lightbox'); // 大图查看器开着 → 先关大图，不误关表单
+  if (lb) lb.remove(); else closeModal();
+});
+
+/* ---------- 大图查看器（滚轮缩放 · 双击放大 · 拖动查看） ---------- */
+function openLightbox(src, title = '') {
+  document.querySelectorAll('.lightbox').forEach(x => x.remove());
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `
+    <div class="lb-bar">
+      <span class="lb-title">${esc(title)}</span>
+      <span class="lb-tip">滚轮缩放 · 双击放大 · 拖动查看</span>
+      <button class="lb-close" type="button">×</button>
+    </div>
+    <img src="${esc(src)}" alt="">`;
+  document.body.appendChild(lb);
+  const img = lb.querySelector('img');
+  let scale = 1, tx = 0, ty = 0;
+  const apply = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; };
+  lb.addEventListener('wheel', e => {
+    e.preventDefault();
+    scale = Math.min(8, Math.max(0.3, scale * (e.deltaY < 0 ? 1.2 : 1 / 1.2)));
+    apply();
+  }, { passive: false });
+  img.addEventListener('dblclick', () => { scale = scale > 1.5 ? 1 : 2.5; tx = ty = 0; apply(); });
+  let drag = null;
+  img.addEventListener('pointerdown', e => {
+    drag = { x: e.clientX - tx, y: e.clientY - ty };
+    img.setPointerCapture(e.pointerId);
+  });
+  img.addEventListener('pointermove', e => {
+    if (!drag) return;
+    tx = e.clientX - drag.x; ty = e.clientY - drag.y; apply();
+  });
+  img.addEventListener('pointerup', () => { drag = null; });
+  lb.querySelector('.lb-close').onclick = () => lb.remove();
+  lb.addEventListener('click', e => { if (e.target === lb) lb.remove(); });
+}
 
 /* ---------- 详情弹窗 ---------- */
 function openDetail(id) {
@@ -233,6 +274,9 @@ function openDetail(id) {
     $('#dDel').onclick = () => confirmDelete(c);
   }
 
+  /* 点击大图 → 全屏查看 */
+  $('#detailMain').onclick = () => openLightbox($('#detailMain').src, c.title || '未命名灵感');
+
   /* 多图切换 */
   document.querySelectorAll('#modalBox .thumb').forEach(t => {
     t.onclick = () => {
@@ -256,8 +300,8 @@ function openForm(editCard = null) {
         <div class="field">
           <div class="upload-area" id="uploadArea">
             <input type="file" id="photoInput" accept="image/*" multiple>
-            <div id="uploadPlaceholder">📷 点击选择穿搭照片（<b>可一次多选</b>）<br>
-              <span style="font-size:.75rem">不同角度、同款不同色都可以放进来 · 最多 ${MAX_PHOTOS} 张<br>iPhone 用户若选择失败，请改用截图上传</span></div>
+            <div id="uploadPlaceholder">📷 <b>添加 / 更换照片</b>：点击选择，或把微信里的图片<b>直接拖到本页任意位置</b><br>
+              <span style="font-size:.75rem">可一次多选 · 最多 ${MAX_PHOTOS} 张 · 点击下方缩略图可放大查看<br>JPG / PNG / WebP / GIF 均可，iPhone 原图若失败请改用截图</span></div>
           </div>
           <div id="photoStrip" class="photo-strip" hidden></div>
         </div>
@@ -321,8 +365,22 @@ function openForm(editCard = null) {
   uploadArea.ondrop = e => {
     e.preventDefault(); uploadArea.classList.remove('drag');
     handleFiles(e.dataTransfer.files);
+    e.stopPropagation(); // 本区域已处理，不再冒泡给窗口级兜底，避免重复添加
   };
   photoInput.onchange = () => { handleFiles(photoInput.files); photoInput.value = ''; };
+
+  /* 整页拖拽兜底：从微信等任意窗口把图拖到页面任何位置都能进表单（表单关闭时自动失效） */
+  const onWinDragOver = e => { e.preventDefault(); uploadArea.classList.add('drag'); };
+  const onWinDrop = e => {
+    e.preventDefault(); uploadArea.classList.remove('drag');
+    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+  };
+  window.addEventListener('dragover', onWinDragOver);
+  window.addEventListener('drop', onWinDrop);
+  window._formDragCleanup = () => {
+    window.removeEventListener('dragover', onWinDragOver);
+    window.removeEventListener('drop', onWinDrop);
+  };
 
   function renderStrip() {
     const strip = $('#photoStrip');
@@ -337,15 +395,23 @@ function openForm(editCard = null) {
       keptImages.map((p, i) => item(esc(p), 'keep:' + i, false)).join('') +
       newPhotos.map((p, i) => item(p.dataUrl, 'new:' + i, true)).join('');
     strip.querySelectorAll('.photo-del').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
         const [kind, idx] = btn.dataset.del.split(':');
         if (kind === 'keep') keptImages.splice(+idx, 1); else newPhotos.splice(+idx, 1);
         renderStrip();
       };
     });
+    /* 点击缩略图 → 全屏查看大图（查看不等于更换，更换/继续添加走上方上传区或拖拽） */
+    strip.querySelectorAll('.photo-item').forEach((item, i) => {
+      item.onclick = () => {
+        const src = i < keptImages.length ? keptImages[i] : newPhotos[i - keptImages.length].dataUrl;
+        openLightbox(src, '查看大图');
+      };
+    });
     $('#uploadPlaceholder').innerHTML = keptImages.length + newPhotos.length >= MAX_PHOTOS
       ? `已满 ${MAX_PHOTOS} 张 📷 如需更换，先在下方缩略图里删掉不要的`
-      : `📷 继续添加照片（可多选，当前 ${keptImages.length + newPhotos.length}/${MAX_PHOTOS}）<br><span style="font-size:.75rem">不同角度、同款不同色都可以放进来</span>`;
+      : `📷 继续添加 / 更换（当前 ${keptImages.length + newPhotos.length}/${MAX_PHOTOS}）· 也可把图片直接拖到本页任意位置<br><span style="font-size:.75rem">点击缩略图可放大查看</span>`;
   }
 
   async function handleFiles(fileList) {
@@ -407,7 +473,10 @@ function compressImage(file, maxEdge = 1400, quality = 0.82) {
         const h = Math.max(1, Math.round(img.naturalHeight * scale));
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';              // PNG 透明底垫白，避免转 JPEG 后变黑
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
         canvas.toBlob(blob => {
           URL.revokeObjectURL(url);
           if (!blob) return reject(new Error('无法压缩图片'));
