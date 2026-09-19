@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>我的穿搭灵感库</title>
+<meta name="description" content="积累穿搭灵感，建立自己的风格，避免买错衣服">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧥</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <h1>我的穿搭灵感库</h1>
+      <p class="subtitle">积累灵感 · 建立风格 · 不买破烂</p>
+    </div>
+    <div class="header-actions">
+      <span id="modeBadge" class="mode-badge readonly">只读模式</span>
+      <button id="btnUnlock" class="btn btn-ghost" hidden>解锁编辑</button>
+      <button id="btnAdd" class="btn btn-primary" hidden>＋ 添加灵感</button>
+    </div>
+  </div>
+  <div id="statsBar" class="stats-bar"></div>
+</header>
+
+<main class="wrap">
+  <div class="toolbar">
+    <div class="chips" id="filterChips">
+      <button class="chip active" data-filter="all">全部</button>
+      <button class="chip" data-filter="wait">观望中</button>
+      <button class="chip" data-filter="bought">已购入</button>
+      <button class="chip" data-filter="skip">决定不买</button>
+    </div>
+    <input id="searchBox" class="search" type="search" placeholder="搜标题 / 标签 / 搭配…">
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div id="emptyState" class="empty-state" hidden>
+    <div class="empty-emoji">🧥</div>
+    <h2>这里还空空如也</h2>
+    <p>第一张穿搭灵感，等你上传。<br>如果你是主人，点右上角「解锁编辑」开始；访客请稍候。</p>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>每一次编辑都会自动存档到 GitHub · <button id="btnLock" class="linklike" hidden>锁定编辑模式</button></p>
+</footer>
+
+<!-- 弹窗容器 -->
+<div id="modalMask" class="modal-mask" hidden>
+  <div id="modalBox" class="modal-box" role="dialog" aria-modal="true"></div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js" defer></script>
+</body>
+</html>
