@@ -13,6 +13,7 @@
 const API = 'https://api.github.com';
 const DATA_PATH = 'data/inspirations.json';
 const LS_KEY = 'outfit_owner_settings';
+const MAX_PHOTOS = 6;
 
 const state = {
   cards: [],
@@ -74,6 +75,15 @@ async function loadCards() {
 }
 
 /* ---------- 渲染 ---------- */
+const NO_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/* 兼容旧数据（单图 image 字符串）与新数据（images 数组） */
+function cardImages(c) {
+  if (Array.isArray(c.images) && c.images.length) return c.images;
+  if (c.image) return [c.image];
+  return [];
+}
+
 function cardBadge(c) {
   if (c.decision === 'wait') return ['观望中', 'b-wait'];
   if (c.decision === 'skip') return ['决定不买', 'b-skip'];
@@ -114,11 +124,14 @@ function render() {
   grid.innerHTML = list.map(c => {
     const [label, cls] = cardBadge(c);
     const tags = (c.tags || []).slice(0, 4).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+    const imgs = cardImages(c);
+    const count = imgs.length > 1 ? `<span class="count-badge">⧉ ${imgs.length}</span>` : '';
     return `
       <div class="card" data-id="${esc(c.id)}">
         <div class="card-thumb">
-          <img src="${esc(c.image)}" alt="${esc(c.title)}" loading="lazy" onerror="this.style.opacity=.15">
+          <img src="${esc(imgs[0] || NO_IMG)}" alt="${esc(c.title)}" loading="lazy" onerror="this.src='${NO_IMG}';this.style.opacity=.2">
           <span class="badge ${cls}">${label}</span>
+          ${count}
         </div>
         <div class="card-body">
           <div class="card-title">${esc(c.title || '未命名灵感')}</div>
@@ -190,10 +203,20 @@ function openDetail(id) {
       <button class="btn btn-danger" id="dDel">删除</button>
     </div>` : '';
 
+  const imgs = cardImages(c);
+  const thumbs = imgs.length > 1
+    ? `<div class="thumb-strip">${imgs.map((p, i) =>
+        `<img class="thumb${i === 0 ? ' active' : ''}" data-src="${esc(p)}" src="${esc(p)}" alt="图${i + 1}" loading="lazy">`).join('')}
+       <span class="thumb-tip">${imgs.length} 张 · 点击切换</span></div>`
+    : '';
+
   openModal(`
     <div class="modal-head"><h3>${esc(c.title || '未命名灵感')}</h3><button class="modal-close">×</button></div>
     <div class="detail-grid">
-      <div class="detail-img"><img src="${esc(c.image)}" alt=""></div>
+      <div class="detail-img">
+        <img id="detailMain" src="${esc(imgs[0] || NO_IMG)}" alt="">
+        ${thumbs}
+      </div>
       <div>
         <div class="detail-status-line"><span class="badge ${cls}" style="position:static">${label}</span>
           ${(c.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' ')}</div>
@@ -209,6 +232,15 @@ function openDetail(id) {
     $('#dEdit').onclick = () => openForm(c);
     $('#dDel').onclick = () => confirmDelete(c);
   }
+
+  /* 多图切换 */
+  document.querySelectorAll('#modalBox .thumb').forEach(t => {
+    t.onclick = () => {
+      $('#detailMain').src = t.dataset.src;
+      document.querySelectorAll('#modalBox .thumb').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+    };
+  });
 }
 
 /* ---------- 添加 / 编辑 表单 ---------- */
@@ -223,11 +255,11 @@ function openForm(editCard = null) {
       <div class="form-section"><h4>① 照片与基本信息</h4>
         <div class="field">
           <div class="upload-area" id="uploadArea">
-            <input type="file" id="photoInput" accept="image/*">
-            <div id="uploadPlaceholder">${isEdit && c.image
-              ? `<img src="${esc(c.image)}" alt=""><div>点击可更换照片</div>`
-              : '📷 点击选择穿搭照片<br><span style="font-size:.75rem">iPhone 用户若选择失败，请改用截图上传</span>'}</div>
+            <input type="file" id="photoInput" accept="image/*" multiple>
+            <div id="uploadPlaceholder">📷 点击选择穿搭照片（<b>可一次多选</b>）<br>
+              <span style="font-size:.75rem">不同角度、同款不同色都可以放进来 · 最多 ${MAX_PHOTOS} 张<br>iPhone 用户若选择失败，请改用截图上传</span></div>
           </div>
+          <div id="photoStrip" class="photo-strip" hidden></div>
         </div>
         <div class="field"><label>标题 *</label><input type="text" id="fTitle" value="${esc(c.title)}" placeholder="如：秋冬通勤 · 大衣叠穿" required></div>
         <div class="field"><label>标签（用逗号分隔，如：秋冬, 通勤, 日系）</label><input type="text" id="fTags" value="${esc((c.tags || []).join(', '))}"></div>
@@ -278,8 +310,9 @@ function openForm(editCard = null) {
       </div>
     </form>`);
 
-  /* --- 表单交互 --- */
-  let newPhoto = null; // { base64, dataUrl }
+  /* --- 照片管理：保留的旧图 + 新增的图 --- */
+  const keptImages = isEdit ? [...cardImages(c)] : []; // 已在仓库里的
+  const newPhotos = [];                                 // 本地新压缩的 { base64, dataUrl, size }
 
   const uploadArea = $('#uploadArea'), photoInput = $('#photoInput');
   uploadArea.onclick = () => photoInput.click();
@@ -287,21 +320,51 @@ function openForm(editCard = null) {
   uploadArea.ondragleave = () => uploadArea.classList.remove('drag');
   uploadArea.ondrop = e => {
     e.preventDefault(); uploadArea.classList.remove('drag');
-    if (e.dataTransfer.files[0]) handlePhoto(e.dataTransfer.files[0]);
+    handleFiles(e.dataTransfer.files);
   };
-  photoInput.onchange = () => { if (photoInput.files[0]) handlePhoto(photoInput.files[0]); };
+  photoInput.onchange = () => { handleFiles(photoInput.files); photoInput.value = ''; };
 
-  async function handlePhoto(file) {
-    if (!/^image\//.test(file.type)) return toast('请选择图片文件', true);
-    try {
-      uploadArea.querySelector('#uploadPlaceholder').innerHTML = '处理照片中…';
-      newPhoto = await compressImage(file);
-      uploadArea.querySelector('#uploadPlaceholder').innerHTML =
-        `<img src="${newPhoto.dataUrl}" alt=""><div>已就绪（${Math.round(newPhoto.size / 1024)} KB）· 点击更换</div>`;
-    } catch (err) {
-      toast('照片处理失败：' + err.message + '（iPhone 用户请试试截图上传）', true);
+  function renderStrip() {
+    const strip = $('#photoStrip');
+    strip.hidden = keptImages.length + newPhotos.length === 0;
+    const item = (src, del, badge) => `
+      <div class="photo-item">
+        <img src="${src}" alt="">
+        ${badge ? '<span class="photo-new">新</span>' : ''}
+        <button type="button" class="photo-del" data-del="${del}">×</button>
+      </div>`;
+    strip.innerHTML =
+      keptImages.map((p, i) => item(esc(p), 'keep:' + i, false)).join('') +
+      newPhotos.map((p, i) => item(p.dataUrl, 'new:' + i, true)).join('');
+    strip.querySelectorAll('.photo-del').forEach(btn => {
+      btn.onclick = () => {
+        const [kind, idx] = btn.dataset.del.split(':');
+        if (kind === 'keep') keptImages.splice(+idx, 1); else newPhotos.splice(+idx, 1);
+        renderStrip();
+      };
+    });
+    $('#uploadPlaceholder').innerHTML = keptImages.length + newPhotos.length >= MAX_PHOTOS
+      ? `已满 ${MAX_PHOTOS} 张 📷 如需更换，先在下方缩略图里删掉不要的`
+      : `📷 继续添加照片（可多选，当前 ${keptImages.length + newPhotos.length}/${MAX_PHOTOS}）<br><span style="font-size:.75rem">不同角度、同款不同色都可以放进来</span>`;
+  }
+
+  async function handleFiles(fileList) {
+    const files = [...fileList].filter(f => /^image\//.test(f.type));
+    if (!files.length) return toast('请选择图片文件', true);
+    const room = MAX_PHOTOS - keptImages.length - newPhotos.length;
+    if (room <= 0) return toast(`一条灵感最多 ${MAX_PHOTOS} 张照片`, true);
+    if (files.length > room) toast(`一次最多还能加 ${room} 张，多出的已忽略`, true);
+    for (const f of files.slice(0, room)) {
+      try {
+        const p = await compressImage(f);
+        newPhotos.push(p);
+        renderStrip();
+      } catch (err) {
+        toast('照片处理失败：' + err.message + '（iPhone 用户请试试截图上传）', true);
+      }
     }
   }
+  renderStrip();
 
   const syncSections = () => {
     const hs = document.querySelector('input[name=hasSimilar]:checked').value;
@@ -318,11 +381,11 @@ function openForm(editCard = null) {
 
   $('#cardForm').onsubmit = async (e) => {
     e.preventDefault();
-    if (!isEdit && !newPhoto) return toast('请先选择一张穿搭照片', true);
+    if (keptImages.length + newPhotos.length === 0) return toast('请至少保留一张穿搭照片', true);
     const btn = $('#fSubmit');
     btn.disabled = true; btn.textContent = '保存中…';
     try {
-      await saveCard(isEdit, c, newPhoto);
+      await saveCard(isEdit, c, keptImages, newPhotos);
       closeModal();
       toast('已保存 ✓ 网站 1 分钟内自动更新（GitHub 重新部署中）');
     } catch (err) {
@@ -425,10 +488,13 @@ async function commitData(mutate, message) {
 }
 
 /* ---------- 保存 / 删除 ---------- */
-async function saveCard(isEdit, oldCard, newPhoto) {
+async function saveCard(isEdit, oldCard, keptImages, newPhotos) {
   const g = (id) => $(id).value.trim();
   const decision = document.querySelector('input[name=decision]:checked').value;
   const id = isEdit ? oldCard.id : genId();
+  const stamp = Date.now().toString(36);
+  const newPaths = newPhotos.map((_, i) => `images/${id}_${stamp}_${i}.jpg`);
+  const images = [...keptImages, ...newPaths];
   const card = {
     id,
     createdAt: isEdit ? (oldCard.createdAt || today()) : today(),
@@ -446,17 +512,20 @@ async function saveCard(isEdit, oldCard, newPhoto) {
     kept: decision === 'buy' ? (document.querySelector('input[name=kept]:checked')?.value || '') : '',
     keptReason: g('#fReason'),
     matchWith: g('#fMatchWith'),
-    image: isEdit ? oldCard.image : `images/${id}.jpg`,
+    image: images[0] || '',
+    images,
   };
 
-  /* 1. 若换了照片：先上传新图 */
-  if (newPhoto) {
+  /* 1. 上传新增照片（可多张） */
+  if (newPhotos.length) {
     const s = getSettings();
-    await ghFetch('PUT', `/repos/${s.username}/${s.repo}/contents/images/${card.id}.jpg`, {
-      message: `上传照片：${card.title || card.id}`,
-      content: newPhoto.base64,
-      branch: 'main',
-    });
+    for (let i = 0; i < newPhotos.length; i++) {
+      await ghFetch('PUT', `/repos/${s.username}/${s.repo}/contents/${newPaths[i]}`, {
+        message: `上传照片：${card.title || id}（${i + 1}/${newPhotos.length}）`,
+        content: newPhotos[i].base64,
+        branch: 'main',
+      });
+    }
   }
 
   /* 2. 写入数据 */
@@ -465,9 +534,12 @@ async function saveCard(isEdit, oldCard, newPhoto) {
     if (i >= 0) cards[i] = card; else cards.unshift(card);
   }, `${isEdit ? '更新' : '添加'}灵感：${card.title || card.id}`);
 
-  /* 3. 编辑时换了照片 → 尽力删掉旧图（失败不影响） */
-  if (isEdit && newPhoto && oldCard.image && oldCard.image !== card.image) {
-    try { await deleteRepoFile(oldCard.image, '清理旧照片'); } catch {}
+  /* 3. 编辑时删掉被移除的旧照片（尽力删，失败不影响） */
+  if (isEdit) {
+    const removed = cardImages(oldCard).filter(p => !keptImages.includes(p));
+    for (const p of removed) {
+      try { await deleteRepoFile(p, '清理旧照片'); } catch {}
+    }
   }
 }
 
@@ -483,7 +555,7 @@ async function deleteRepoFile(path, message) {
 function confirmDelete(c) {
   openModal(`
     <div class="modal-head"><h3>删除这条灵感？</h3><button class="modal-close">×</button></div>
-    <p style="margin-bottom:6px">「${esc(c.title || '未命名')}」将被删除，照片也会一并移除。</p>
+    <p style="margin-bottom:6px">「${esc(c.title || '未命名')}」将被删除，${cardImages(c).length > 1 ? `共 ${cardImages(c).length} 张照片` : '照片'}也会一并移除。</p>
     <p style="font-size:.82rem;color:var(--ink-3);margin-bottom:20px">别担心：GitHub 上仍保留历史存档，需要时可找回。</p>
     <div class="form-actions">
       <button class="btn btn-ghost" id="delCancel">算了</button>
@@ -497,7 +569,7 @@ function confirmDelete(c) {
         const i = cards.findIndex(x => x.id === c.id);
         if (i >= 0) cards.splice(i, 1);
       }, `删除灵感：${c.title || c.id}`);
-      try { await deleteRepoFile(c.image, '删除照片'); } catch {}
+      try { for (const p of cardImages(c)) await deleteRepoFile(p, '删除照片'); } catch {}
       closeModal();
       toast('已删除 ✓');
     } catch (e) {
