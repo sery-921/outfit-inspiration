@@ -1,0 +1,27 @@
+{
+  "cards": [
+    {
+      "id": "cmu8n88a8yw8c2",
+      "createdAt": "2026-09-19",
+      "updatedAt": "2026-09-19",
+      "title": "11",
+      "tags": [],
+      "notes": "",
+      "hasSimilar": "no",
+      "similarDesc": "",
+      "similarDiff": "",
+      "decision": "none",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "",
+      "matchWith": "",
+      "image": "images/cmu8n88a8yw8c2_mu8n88a8_0.jpg",
+      "images": [
+        "images/cmu8n88a8yw8c2_mu8n88a8_0.jpg",
+        "images/cmu8n88a8yw8c2_mu8n88a8_1.jpg"
+      ]
+    }
+  ]
+}
