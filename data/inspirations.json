@@ -1,6 +1,37 @@
 {
   "cards": [
     {
+      "id": "cmu9oqp1ye69ln",
+      "createdAt": "2026-09-20",
+      "updatedAt": "2026-09-20",
+      "title": "白色毛衣+浅蓝色牛仔裤",
+      "tags": [],
+      "notes": "软糯、舒服、日常",
+      "hasSimilar": "no",
+      "similarDesc": "",
+      "similarDiff": "",
+      "similarImages": [],
+      "decision": "wait",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "感觉毛衣贵了，白色不耐脏，还没有买到满意的浅蓝色牛仔裤",
+      "matchWith": "",
+      "links": [
+        {
+          "url": "",
+          "note": "",
+          "price": 202
+        }
+      ],
+      "image": "images/cmu9oqp1ye69ln_mu9oqp1y_0.jpg",
+      "images": [
+        "images/cmu9oqp1ye69ln_mu9oqp1y_0.jpg",
+        "images/cmu9oqp1ye69ln_mu9oqp1y_1.jpg"
+      ]
+    },
+    {
       "id": "cmu9oiwuzmhgmu",
       "createdAt": "2026-09-20",
       "updatedAt": "2026-09-20",
