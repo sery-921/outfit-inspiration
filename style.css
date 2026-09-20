@@ -458,6 +458,73 @@ input, select, textarea { font-family: inherit; font-size: 1rem; color: var(--in
   pointer-events: none;
 }
 .photo-item:hover::after { opacity: 1; }
+/* ---------- 灵感来源链接（表单 + 详情） ---------- */
+.btn-sm { padding: 6px 12px; font-size: .82rem; }
+
+.link-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.link-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1.1fr 110px 30px;
+  gap: 6px;
+  align-items: center;
+}
+.link-row input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #fdfcfa;
+  font-size: .88rem;
+  width: 100%;
+}
+.link-row input:focus { border-color: var(--accent); outline: none; }
+.l-price-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fdfcfa;
+  padding-left: 8px;
+  font-size: .85rem;
+  color: var(--ink-2);
+}
+.l-price-wrap:focus-within { border-color: var(--accent); }
+.l-price-wrap input {
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 7px 6px !important;
+  background: transparent !important;
+  font-size: .88rem !important;
+  width: 100% !important;
+}
+.l-del {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #fdeeee;
+  color: #b3413b;
+  font-size: .95rem;
+  line-height: 1;
+}
+.l-del:hover { background: #f9dcdc; }
+
+/* 详情页展示 */
+.link-display { display: flex; flex-direction: column; gap: 6px; }
+.link-display-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.link-display-anchor {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+  word-break: break-all;
+  font-size: .92rem;
+}
+.link-display-anchor:hover { color: var(--accent-dark); border-bottom-style: solid; }
+
 .detail-grid .detail-img img#detailMain { cursor: zoom-in; }
 
 /* ============ 大图查看器 ============ */
@@ -569,4 +636,7 @@ input, select, textarea { font-family: inherit; font-size: 1rem; color: var(--in
   .field-row { grid-template-columns: 1fr; }
   .modal-box { padding: 20px 16px 16px; }
   .search { flex: 1 1 100%; }
+  .link-row { grid-template-columns: 1fr 1fr; }
+  .link-row .l-price-wrap, .link-row .l-del { grid-column: span 1; }
+  .link-row .l-url { grid-column: 1 / -1; }
 }

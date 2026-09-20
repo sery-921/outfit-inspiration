@@ -84,6 +84,12 @@ function cardImages(c) {
   return [];
 }
 
+/* 灵感来源链接（博主给的产品链接） */
+function cardLinks(c) {
+  if (Array.isArray(c.links) && c.links.length) return c.links;
+  return [];
+}
+
 function cardBadge(c) {
   if (c.decision === 'wait') return ['观望中', 'b-wait'];
   if (c.decision === 'skip') return ['决定不买', 'b-skip'];
@@ -262,6 +268,13 @@ function openDetail(id) {
         <div class="detail-status-line"><span class="badge ${cls}" style="position:static">${label}</span>
           ${(c.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' ')}</div>
         <div class="form-section"><h4>灵感笔记</h4>${kv('记录', c.notes) || '<div class="kv"><div class="v" style="color:var(--ink-3)">未填写</div></div>'}</div>
+        ${cardLinks(c).length ? `<div class="form-section"><h4>灵感来源</h4>
+          <div class="link-display">${cardLinks(c).map(l => `
+            <div class="link-display-row">
+              <a class="link-display-anchor" href="${esc(l.url || '#')}" target="_blank" rel="noopener noreferrer">${esc(l.note || l.url || '（链接）')}</a>
+              ${l.price ? `<span class="price-tag">¥ ${esc(l.price)}</span>` : ''}
+            </div>`).join('')}</div>
+        </div>` : ''}
         <div class="form-section"><h4>衣柜对照</h4>${similarBlock}</div>
         ${buyBlock}
         ${c.matchWith ? `<div class="form-section"><h4>可以搭配</h4>${kv('搭配思路', c.matchWith)}</div>` : ''}
@@ -328,6 +341,11 @@ function openForm(editCard = null) {
           <input type="radio" name="decision" id="dBuy" value="buy" ${c.decision === 'buy' ? 'checked' : ''}><label for="dBuy">已购入</label>
           <input type="radio" name="decision" id="dSkip" value="skip" ${c.decision === 'skip' ? 'checked' : ''}><label for="dSkip">决定不买</label>
         </div>
+        <div class="field">
+          <label>灵感来源链接（博主给的产品链接：平台 / 店铺 / 码数，可多条）</label>
+          <div id="linkList" class="link-list"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="linkAdd">＋ 添加链接</button>
+        </div>
         <div id="buyBlock" hidden>
           <div class="field-row">
             <div class="field"><label>花了多少钱（元）</label><input type="number" id="fPrice" min="0" step="1" value="${c.price ?? ''}"></div>
@@ -357,6 +375,32 @@ function openForm(editCard = null) {
   /* --- 照片管理：保留的旧图 + 新增的图 --- */
   const keptImages = isEdit ? [...cardImages(c)] : []; // 已在仓库里的
   const newPhotos = [];                                 // 本地新压缩的 { base64, dataUrl, size }
+
+  /* --- 灵感来源链接（动态多行：博主给的产品链接 + 平台说明 + 价格标注） --- */
+  const localLinks = isEdit && cardLinks(c).length ? cardLinks(c).map(l => ({ ...l })) : [{ url: '', note: '', price: '' }];
+  const linkList = $('#linkList'), linkAdd = $('#linkAdd');
+  const renderLinks = () => {
+    if (!localLinks.length) { linkList.innerHTML = ''; return; }
+    linkList.innerHTML = localLinks.map((l, i) => `
+      <div class="link-row" data-i="${i}">
+        <input type="url" class="l-url" value="${esc(l.url)}" placeholder="链接 URL（淘宝/小红书/品牌官网…）">
+        <input type="text" class="l-note" value="${esc(l.note || '')}" placeholder="平台 · 店铺 · 码数">
+        <div class="l-price-wrap"><span>¥</span><input type="number" class="l-price" value="${l.price ?? ''}" min="0" step="1" placeholder="价格"></div>
+        <button type="button" class="l-del" title="删除该链接">×</button>
+      </div>`).join('');
+    linkList.querySelectorAll('.link-row').forEach(row => {
+      const i = +row.dataset.i;
+      row.querySelector('.l-url').oninput = e => localLinks[i].url = e.target.value.trim();
+      row.querySelector('.l-note').oninput = e => localLinks[i].note = e.target.value.trim();
+      row.querySelector('.l-price').oninput = e => {
+        const v = e.target.value;
+        localLinks[i].price = v === '' ? '' : +v;
+      };
+      row.querySelector('.l-del').onclick = () => { localLinks.splice(i, 1); renderLinks(); };
+    });
+  };
+  linkAdd.onclick = () => { localLinks.push({ url: '', note: '', price: '' }); renderLinks(); };
+  renderLinks();
 
   const uploadArea = $('#uploadArea'), photoInput = $('#photoInput');
   uploadArea.onclick = () => photoInput.click();
@@ -451,7 +495,7 @@ function openForm(editCard = null) {
     const btn = $('#fSubmit');
     btn.disabled = true; btn.textContent = '保存中…';
     try {
-      await saveCard(isEdit, c, keptImages, newPhotos);
+      await saveCard(isEdit, c, keptImages, newPhotos, localLinks);
       closeModal();
       toast('已保存 ✓ 网站 1 分钟内自动更新（GitHub 重新部署中）');
     } catch (err) {
@@ -557,13 +601,16 @@ async function commitData(mutate, message) {
 }
 
 /* ---------- 保存 / 删除 ---------- */
-async function saveCard(isEdit, oldCard, keptImages, newPhotos) {
+async function saveCard(isEdit, oldCard, keptImages, newPhotos, localLinks = []) {
   const g = (id) => $(id).value.trim();
   const decision = document.querySelector('input[name=decision]:checked').value;
   const id = isEdit ? oldCard.id : genId();
   const stamp = Date.now().toString(36);
   const newPaths = newPhotos.map((_, i) => `images/${id}_${stamp}_${i}.jpg`);
   const images = [...keptImages, ...newPaths];
+  const links = localLinks
+    .filter(l => l.url || l.note || l.price !== '' && l.price != null)
+    .map(l => ({ url: l.url, note: l.note || '', price: l.price === '' || l.price == null ? null : +l.price }));
   const card = {
     id,
     createdAt: isEdit ? (oldCard.createdAt || today()) : today(),
@@ -581,6 +628,7 @@ async function saveCard(isEdit, oldCard, keptImages, newPhotos) {
     kept: decision === 'buy' ? (document.querySelector('input[name=kept]:checked')?.value || '') : '',
     keptReason: g('#fReason'),
     matchWith: g('#fMatchWith'),
+    links,
     image: images[0] || '',
     images,
   };
