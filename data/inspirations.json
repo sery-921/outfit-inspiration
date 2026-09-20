@@ -1,6 +1,30 @@
 {
   "cards": [
     {
+      "id": "cmu9njot9et59t",
+      "createdAt": "2026-09-20",
+      "updatedAt": "2026-09-20",
+      "title": "白色内搭+黑色开衫+黑白条纹休闲裤",
+      "tags": [],
+      "notes": "",
+      "hasSimilar": "yes",
+      "similarDesc": "黑色开衫、条纹裤",
+      "similarDiff": "我喜欢那件开衫，但它穿久了起球了，看起来比图片的肩宽大些也更厚实点，有考虑要不要买件新的。条纹裤有条类似西装裤的，但是是卡其棕，和白色内搭可能没那么搭，而且那条裤长长了，我穿它得穿增高鞋才行……",
+      "similarImages": [],
+      "decision": "wait",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "黑色开衫已经有一件了，虽然起球了哈哈……白色内搭看看有没有合适的现有的/准备买的试穿是否合身",
+      "matchWith": "黑色裤子",
+      "links": [],
+      "image": "images/cmu9njot9et59t_mu9njot9_0.jpg",
+      "images": [
+        "images/cmu9njot9et59t_mu9njot9_0.jpg"
+      ]
+    },
+    {
       "id": "cmu8n88a8yw8c2",
       "createdAt": "2026-09-19",
       "updatedAt": "2026-09-20",
