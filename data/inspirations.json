@@ -1,6 +1,36 @@
 {
   "cards": [
     {
+      "id": "cmu9oe6ygx5b3y",
+      "createdAt": "2026-09-20",
+      "updatedAt": "2026-09-20",
+      "title": "灰色上衣+复古蓝牛仔裤",
+      "tags": [],
+      "notes": "通勤、干练、日常",
+      "hasSimilar": "yes",
+      "similarDesc": "上衣",
+      "similarDiff": "和我那件黑白条纹的给的感觉有点像，但这件看起来更薄，而且灰色感觉更干练一些？",
+      "similarImages": [],
+      "decision": "none",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "",
+      "matchWith": "",
+      "links": [
+        {
+          "url": "",
+          "note": "1mo饼的店",
+          "price": null
+        }
+      ],
+      "image": "images/cmu9oe6ygx5b3y_mu9oe6yg_0.jpg",
+      "images": [
+        "images/cmu9oe6ygx5b3y_mu9oe6yg_0.jpg"
+      ]
+    },
+    {
       "id": "cmu9nx3mwm6kpi",
       "createdAt": "2026-09-20",
       "updatedAt": "2026-09-20",
