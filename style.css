@@ -395,6 +395,25 @@ input, select, textarea { font-family: inherit; font-size: 1rem; color: var(--in
 .thumb-strip .thumb.active { border-color: var(--accent); opacity: 1; }
 .thumb-tip { font-size: .68rem; color: var(--ink-3); white-space: nowrap; padding: 0 4px 0 2px; }
 
+/* 详情页：衣柜对照图 */
+.sim-gallery {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 4px;
+}
+.sim-gallery .sim-thumb {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: zoom-in;
+  border: 2px solid transparent;
+  transition: border-color .12s, filter .12s;
+}
+.sim-gallery .sim-thumb:hover { border-color: var(--accent); filter: brightness(.9); }
+
 /* 表单里的照片管理条 */
 .photo-strip {
   display: flex;

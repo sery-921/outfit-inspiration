@@ -90,6 +90,12 @@ function cardLinks(c) {
   return [];
 }
 
+/* 衣柜对照图（类似的衣服：模特图 / 实穿图 / 衣服图） */
+function cardSimilarImages(c) {
+  if (Array.isArray(c.similarImages) && c.similarImages.length) return c.similarImages;
+  return [];
+}
+
 function cardBadge(c) {
   if (c.decision === 'wait') return ['观望中', 'b-wait'];
   if (c.decision === 'skip') return ['决定不买', 'b-skip'];
@@ -225,8 +231,12 @@ function openDetail(id) {
   if (!c) return;
   const [label, cls] = cardBadge(c);
   const kv = (k, v) => v ? `<div class="kv"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>` : '';
+  const similarImgs = cardSimilarImages(c);
   const similarBlock = c.hasSimilar === 'yes'
     ? kv('衣柜里类似的衣服', c.similarDesc) + kv('和这套的区别', c.similarDiff)
+      + (similarImgs.length ? `<div class="sim-gallery">${similarImgs.map((p, i) =>
+          `<img class="sim-thumb" data-src="${esc(p)}" src="${esc(p)}" alt="对照图${i + 1}" loading="lazy">`).join('')}
+        <span class="thumb-tip">${similarImgs.length} 张对照图 · 点击放大</span></div>` : '')
     : '<div class="kv"><div class="v" style="color:var(--ink-3)">衣柜里还没有类似的</div></div>';
 
   let buyBlock = '';
@@ -298,6 +308,11 @@ function openDetail(id) {
       t.classList.add('active');
     };
   });
+
+  /* 衣柜对照图点击放大 */
+  document.querySelectorAll('#modalBox .sim-thumb').forEach(t => {
+    t.onclick = () => openLightbox(t.dataset.src, c.similarDesc || '衣柜对照图');
+  });
 }
 
 /* ---------- 添加 / 编辑 表单 ---------- */
@@ -331,6 +346,14 @@ function openForm(editCard = null) {
         <div id="similarBlock">
           <div class="field"><label>是哪件？</label><input type="text" id="fSimilarDesc" value="${esc(c.similarDesc)}" placeholder="如：米色羊绒大衣"></div>
           <div class="field"><label>和这套的区别</label><textarea id="fSimilarDiff" placeholder="如：我的更短，灵感这件垂感更好">${esc(c.similarDiff)}</textarea></div>
+          <div class="field">
+            <label>对照图（我现有的那件：模特上身图 / 实穿图 / 衣服图，最多 ${MAX_PHOTOS} 张）</label>
+            <div class="upload-area" id="similarUploadArea">
+              <input type="file" id="similarPhotoInput" accept="image/*" multiple>
+              <div id="similarUploadPlaceholder">📷 点击选择，或把图片拖到本页任意位置<br><span style="font-size:.75rem">和「照片」分开存放，专用于衣柜比对 · 点击缩略图可放大</span></div>
+            </div>
+            <div id="similarPhotoStrip" class="photo-strip" hidden></div>
+          </div>
         </div>
       </div>
 
@@ -402,6 +425,68 @@ function openForm(editCard = null) {
   linkAdd.onclick = () => { localLinks.push({ url: '', note: '', price: '' }); renderLinks(); };
   renderLinks();
 
+  /* --- 衣柜对照图管理：保留的旧图 + 新增的图（与「照片」分开存放） --- */
+  const keptSimilarImages = isEdit ? [...cardSimilarImages(c)] : [];
+  const newSimilarPhotos = [];
+  const simUploadArea = $('#similarUploadArea'), simPhotoInput = $('#similarPhotoInput');
+  const renderSimilarStrip = () => {
+    const strip = $('#similarPhotoStrip');
+    strip.hidden = keptSimilarImages.length + newSimilarPhotos.length === 0;
+    const item = (src, del, badge) => `
+      <div class="photo-item">
+        <img src="${src}" alt="">
+        ${badge ? '<span class="photo-new">新</span>' : ''}
+        <button type="button" class="photo-del" data-del="${del}">×</button>
+      </div>`;
+    strip.innerHTML =
+      keptSimilarImages.map((p, i) => item(esc(p), 'keep:' + i, false)).join('') +
+      newSimilarPhotos.map((p, i) => item(p.dataUrl, 'new:' + i, true)).join('');
+    strip.querySelectorAll('.photo-del').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const [kind, idx] = btn.dataset.del.split(':');
+        if (kind === 'keep') keptSimilarImages.splice(+idx, 1); else newSimilarPhotos.splice(+idx, 1);
+        renderSimilarStrip();
+      };
+    });
+    strip.querySelectorAll('.photo-item').forEach((item, i) => {
+      item.onclick = () => {
+        const src = i < keptSimilarImages.length ? keptSimilarImages[i] : newSimilarPhotos[i - keptSimilarImages.length].dataUrl;
+        openLightbox(src, '衣柜对照图');
+      };
+    });
+    const total = keptSimilarImages.length + newSimilarPhotos.length;
+    $('#similarUploadPlaceholder').innerHTML = total >= MAX_PHOTOS
+      ? `已满 ${MAX_PHOTOS} 张 📷 如需更换，先在下方缩略图里删掉不要的`
+      : `📷 点击选择，或把图片拖到本页任意位置（当前 ${total}/${MAX_PHOTOS}）<br><span style="font-size:.75rem">和「照片」分开存放，专用于衣柜比对 · 点击缩略图可放大</span>`;
+  };
+  const handleSimilarFiles = async (fileList) => {
+    const files = [...fileList].filter(f => /^image\//.test(f.type));
+    if (!files.length) return toast('请选择图片文件', true);
+    const room = MAX_PHOTOS - keptSimilarImages.length - newSimilarPhotos.length;
+    if (room <= 0) return toast(`对照图最多 ${MAX_PHOTOS} 张`, true);
+    if (files.length > room) toast(`一次最多还能加 ${room} 张，多出的已忽略`, true);
+    for (const f of files.slice(0, room)) {
+      try {
+        const p = await compressImage(f);
+        newSimilarPhotos.push(p);
+        renderSimilarStrip();
+      } catch (err) {
+        toast('照片处理失败：' + err.message + '（iPhone 用户请试试截图上传）', true);
+      }
+    }
+  };
+  simUploadArea.onclick = () => simPhotoInput.click();
+  simUploadArea.ondragover = e => { e.preventDefault(); simUploadArea.classList.add('drag'); };
+  simUploadArea.ondragleave = () => simUploadArea.classList.remove('drag');
+  simUploadArea.ondrop = e => {
+    e.preventDefault(); simUploadArea.classList.remove('drag');
+    handleSimilarFiles(e.dataTransfer.files);
+    e.stopPropagation();
+  };
+  simPhotoInput.onchange = () => { handleSimilarFiles(simPhotoInput.files); simPhotoInput.value = ''; };
+  renderSimilarStrip();
+
   const uploadArea = $('#uploadArea'), photoInput = $('#photoInput');
   uploadArea.onclick = () => photoInput.click();
   uploadArea.ondragover = e => { e.preventDefault(); uploadArea.classList.add('drag'); };
@@ -413,11 +498,16 @@ function openForm(editCard = null) {
   };
   photoInput.onchange = () => { handleFiles(photoInput.files); photoInput.value = ''; };
 
-  /* 整页拖拽兜底：从微信等任意窗口把图拖到页面任何位置都能进表单（表单关闭时自动失效） */
+  /* 整页拖拽兜底：从微信等任意窗口把图拖到页面任何位置都能进表单。
+     拖到「衣柜对照」区域 → 加为对照图；拖到其他位置 → 加为主照片。 */
   const onWinDragOver = e => { e.preventDefault(); uploadArea.classList.add('drag'); };
   const onWinDrop = e => {
     e.preventDefault(); uploadArea.classList.remove('drag');
-    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    if (!e.dataTransfer?.files?.length) return;
+    const el = e.target;
+    const inSimilar = el && el.closest && el.closest('#similarBlock');
+    if (inSimilar) handleSimilarFiles(e.dataTransfer.files);
+    else handleFiles(e.dataTransfer.files);
   };
   window.addEventListener('dragover', onWinDragOver);
   window.addEventListener('drop', onWinDrop);
@@ -495,7 +585,7 @@ function openForm(editCard = null) {
     const btn = $('#fSubmit');
     btn.disabled = true; btn.textContent = '保存中…';
     try {
-      await saveCard(isEdit, c, keptImages, newPhotos, localLinks);
+      await saveCard(isEdit, c, keptImages, newPhotos, localLinks, keptSimilarImages, newSimilarPhotos);
       closeModal();
       toast('已保存 ✓ 网站 1 分钟内自动更新（GitHub 重新部署中）');
     } catch (err) {
@@ -601,13 +691,16 @@ async function commitData(mutate, message) {
 }
 
 /* ---------- 保存 / 删除 ---------- */
-async function saveCard(isEdit, oldCard, keptImages, newPhotos, localLinks = []) {
+async function saveCard(isEdit, oldCard, keptImages, newPhotos, localLinks = [], keptSimilarImages = [], newSimilarPhotos = []) {
   const g = (id) => $(id).value.trim();
   const decision = document.querySelector('input[name=decision]:checked').value;
+  const hasSimilar = document.querySelector('input[name=hasSimilar]:checked').value;
   const id = isEdit ? oldCard.id : genId();
   const stamp = Date.now().toString(36);
   const newPaths = newPhotos.map((_, i) => `images/${id}_${stamp}_${i}.jpg`);
   const images = [...keptImages, ...newPaths];
+  const newSimilarPaths = newSimilarPhotos.map((_, i) => `images/${id}_${stamp}_sim_${i}.jpg`);
+  const similarImages = [...keptSimilarImages, ...newSimilarPaths];
   const links = localLinks
     .filter(l => l.url || l.note || l.price !== '' && l.price != null)
     .map(l => ({ url: l.url, note: l.note || '', price: l.price === '' || l.price == null ? null : +l.price }));
@@ -618,9 +711,10 @@ async function saveCard(isEdit, oldCard, keptImages, newPhotos, localLinks = [])
     title: g('#fTitle'),
     tags: g('#fTags').split(/[,，、\s]+/).filter(Boolean).slice(0, 8),
     notes: g('#fNotes'),
-    hasSimilar: document.querySelector('input[name=hasSimilar]:checked').value,
+    hasSimilar,
     similarDesc: g('#fSimilarDesc'),
     similarDiff: g('#fSimilarDiff'),
+    similarImages,
     decision,
     price: decision === 'buy' && g('#fPrice') !== '' ? +g('#fPrice') : null,
     boughtDate: decision === 'buy' ? g('#fBoughtDate') : '',
@@ -645,6 +739,18 @@ async function saveCard(isEdit, oldCard, keptImages, newPhotos, localLinks = [])
     }
   }
 
+  /* 1b. 上传新增对照图（可多张） */
+  if (newSimilarPhotos.length) {
+    const s = getSettings();
+    for (let i = 0; i < newSimilarPhotos.length; i++) {
+      await ghFetch('PUT', `/repos/${s.username}/${s.repo}/contents/${newSimilarPaths[i]}`, {
+        message: `上传衣柜对照图：${card.title || id}（${i + 1}/${newSimilarPhotos.length}）`,
+        content: newSimilarPhotos[i].base64,
+        branch: 'main',
+      });
+    }
+  }
+
   /* 2. 写入数据 */
   await commitData(cards => {
     const i = cards.findIndex(x => x.id === card.id);
@@ -656,6 +762,10 @@ async function saveCard(isEdit, oldCard, keptImages, newPhotos, localLinks = [])
     const removed = cardImages(oldCard).filter(p => !keptImages.includes(p));
     for (const p of removed) {
       try { await deleteRepoFile(p, '清理旧照片'); } catch {}
+    }
+    const removedSim = cardSimilarImages(oldCard).filter(p => !keptSimilarImages.includes(p));
+    for (const p of removedSim) {
+      try { await deleteRepoFile(p, '清理旧对照图'); } catch {}
     }
   }
 }
@@ -687,6 +797,7 @@ function confirmDelete(c) {
         if (i >= 0) cards.splice(i, 1);
       }, `删除灵感：${c.title || c.id}`);
       try { for (const p of cardImages(c)) await deleteRepoFile(p, '删除照片'); } catch {}
+      try { for (const p of cardSimilarImages(c)) await deleteRepoFile(p, '删除对照图'); } catch {}
       closeModal();
       toast('已删除 ✓');
     } catch (e) {
