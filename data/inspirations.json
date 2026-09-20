@@ -11,18 +11,23 @@
       "similarDesc": "上衣",
       "similarDiff": "和我那件黑白条纹的给的感觉有点像，但这件看起来更薄，而且灰色感觉更干练一些？",
       "similarImages": [],
-      "decision": "none",
+      "decision": "skip",
       "price": null,
       "boughtDate": "",
       "boughtDiff": "",
       "kept": "",
-      "keptReason": "",
+      "keptReason": "上衣再店铺里没找到,裤子腰围不合适",
       "matchWith": "",
       "links": [
         {
           "url": "",
-          "note": "1mo饼的店",
+          "note": "小红书-1mo饼的店(上衣)",
           "price": null
+        },
+        {
+          "url": "",
+          "note": "tb-oroi旗舰店",
+          "price": 136
         }
       ],
       "image": "images/cmu9oe6ygx5b3y_mu9oe6yg_0.jpg",
