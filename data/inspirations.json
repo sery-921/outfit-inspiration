@@ -1,6 +1,31 @@
 {
   "cards": [
     {
+      "id": "cmvoxqxg6k3blg",
+      "createdAt": "2026-10-26",
+      "updatedAt": "2026-10-26",
+      "title": "棉麻质感的白色上衣？+浅棕色牛仔裤+蓝黑色围巾？领带？",
+      "tags": [],
+      "notes": "",
+      "hasSimilar": "no",
+      "similarDesc": "",
+      "similarDiff": "",
+      "similarImages": [],
+      "decision": "none",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "",
+      "matchWith": "",
+      "links": [],
+      "image": "images/cmvoxqxg6k3blg_mvoxqxg6_0.jpg",
+      "images": [
+        "images/cmvoxqxg6k3blg_mvoxqxg6_0.jpg",
+        "images/cmvoxqxg6k3blg_mvoxqxg6_1.jpg"
+      ]
+    },
+    {
       "id": "cmvoxot8kpshig",
       "createdAt": "2026-10-26",
       "updatedAt": "2026-10-26",
