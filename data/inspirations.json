@@ -1,6 +1,32 @@
 {
   "cards": [
     {
+      "id": "cmvox12kcopi3i",
+      "createdAt": "2026-10-26",
+      "updatedAt": "2026-10-26",
+      "title": "白色内搭+灰黑色毛外套+复古蓝牛仔裤",
+      "tags": [],
+      "notes": "",
+      "hasSimilar": "no",
+      "similarDesc": "",
+      "similarDiff": "",
+      "similarImages": [],
+      "decision": "none",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "这种毛外套容易买到质感不好的，要买的话要下单能退的",
+      "matchWith": "",
+      "links": [],
+      "image": "images/cmvox12kcopi3i_mvox12kc_0.jpg",
+      "images": [
+        "images/cmvox12kcopi3i_mvox12kc_0.jpg",
+        "images/cmvox12kcopi3i_mvox12kc_1.jpg",
+        "images/cmvox12kcopi3i_mvox12kc_2.jpg"
+      ]
+    },
+    {
       "id": "cmvowp1a74as2a",
       "createdAt": "2026-10-26",
       "updatedAt": "2026-10-26",
