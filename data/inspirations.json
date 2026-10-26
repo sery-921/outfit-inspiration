@@ -1,6 +1,30 @@
 {
   "cards": [
     {
+      "id": "cmvoxajbge8vhu",
+      "createdAt": "2026-10-26",
+      "updatedAt": "2026-10-26",
+      "title": "粉色毛衣外套+灰色糯米裤",
+      "tags": [],
+      "notes": "",
+      "hasSimilar": "no",
+      "similarDesc": "",
+      "similarDiff": "",
+      "similarImages": [],
+      "decision": "none",
+      "price": null,
+      "boughtDate": "",
+      "boughtDiff": "",
+      "kept": "",
+      "keptReason": "",
+      "matchWith": "",
+      "links": [],
+      "image": "images/cmvoxajbge8vhu_mvoxajbg_0.jpg",
+      "images": [
+        "images/cmvoxajbge8vhu_mvoxajbg_0.jpg"
+      ]
+    },
+    {
       "id": "cmvox5dbweim78",
       "createdAt": "2026-10-26",
       "updatedAt": "2026-10-26",
